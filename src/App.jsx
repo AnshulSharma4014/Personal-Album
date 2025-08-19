@@ -39,8 +39,10 @@ function Toolbar({ path, onBack }) {
 
 function Album({ path, setPath }) {
   const url = path ? `${API}/api/albums${path}` : `${API}/api/albums`;
-  console.log("Album URL:", url);
+  
   const { data, loading, err } = useFetchJSON(url);
+
+  console.log("Album data:", data);
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
   if (err || !data) return <div style={{ padding: 16 }}>Error loading.</div>;
