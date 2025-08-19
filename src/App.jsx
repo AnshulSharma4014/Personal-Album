@@ -74,11 +74,11 @@ function Album({ path, setPath }) {
         </>
       )}
 
-      {data.photos?.length > 0 && (
+      {data?.length > 0 && (
         <>
           <h2 style={{ padding: "0 16px" }}>Photos</h2>
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", padding: 16 }}>
-            {data.photos.map((p) => (
+            {data.map((p) => (
               <a
                 key={p.full}
                 href={p.full}
