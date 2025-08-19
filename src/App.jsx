@@ -10,7 +10,8 @@ function useFetchJSON(url) {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetch(url, { credentials: "include" })
+    //fetch(url, { credentials: "include" })
+     fetch(url)
       .then((r) => r.json())
       .then((j) => alive && setData(j))
       .catch((e) => alive && setErr(e))
