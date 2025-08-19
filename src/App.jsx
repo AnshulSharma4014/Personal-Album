@@ -104,7 +104,7 @@ function Album({ path, setPath }) {
 }
 
 export default function App() {
-  const [path, setPath] = useState("");
+  const [path, setPath] = useState(API);
 
   return (
     <div style={{ minHeight: "100vh", background: "#fafafa" }}>
