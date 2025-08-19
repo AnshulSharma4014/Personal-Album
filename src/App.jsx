@@ -171,7 +171,7 @@ function Album({ path, setPath }) {
         {/* image */}
         <div
           style={{
-            position: "absolute", inset: 0,
+            position: "fixed", inset: 0,
             overflow: "auto",
             display: "flex", alignItems: "center", justifyContent: "center"
           }}
