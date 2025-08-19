@@ -42,13 +42,13 @@ function Album({ path, setPath }) {
   
   const { data, loading, err } = useFetchJSON(url);
 
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
   if (err || !data) return <div style={{ padding: 16 }}>Error loading.</div>;
 
   const canBack = path && path !== "/";
   const back = canBack ? (path.split("/").slice(0, -1).join("/") || "/") : null;
-
-  const [selectedPhotos, setSelectedPhotos] = useState([]);
 
   const handlePhotoClick = (photo) => {
     setSelectedPhotos((prev) =>
