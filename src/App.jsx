@@ -80,8 +80,8 @@ function Album({ path, setPath }) {
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", padding: 16 }}>
             {data.map((p) => (
               <a
-                key={p.full}
-                href={p.full}
+                key={API + p.full}
+                href={API + p.full}
                 target="_blank"
                 rel="noreferrer"
                 style={{ border: "1px solid #ddd", borderRadius: 16, overflow: "hidden", textDecoration: "none", color: "inherit" }}
