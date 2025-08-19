@@ -220,7 +220,7 @@ function Album({ path, setPath }) {
           {/* image */}
           <div
             style={{
-              position: "absolute",
+              position: "relative",
               inset: 0,
               overflow: "auto",
               display: "flex",
