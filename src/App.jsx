@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 const API = import.meta.env.VITE_API || "";
 
 function useFetchJSON(url) {
+  console.log("Fetching:", url);
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -37,6 +38,7 @@ function Toolbar({ path, onBack }) {
 
 function Album({ path, setPath }) {
   const url = path ? `/api/albums${path}` : "/api/albums";
+  console.log("Album URL:", url);
   const { data, loading, err } = useFetchJSON(url);
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
