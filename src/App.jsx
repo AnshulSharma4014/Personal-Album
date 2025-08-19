@@ -42,13 +42,31 @@ function Album({ path, setPath }) {
   
   const { data, loading, err } = useFetchJSON(url);
 
-  console.log("Album data:", data);
-
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
   if (err || !data) return <div style={{ padding: 16 }}>Error loading.</div>;
 
   const canBack = path && path !== "/";
   const back = canBack ? (path.split("/").slice(0, -1).join("/") || "/") : null;
+
+  const [selectedPhotos, setSelectedPhotos] = useState([]);
+
+  const handlePhotoClick = (photo) => {
+    setSelectedPhotos((prev) =>
+      prev.some((p) => p.full === photo.full)
+        ? prev.filter((p) => p.full !== photo.full)
+        : [...prev, photo]
+    );
+  };
+
+  const handleZoom = (photoFull, delta) => {
+    setSelectedPhotos((prev) =>
+      prev.map((p) =>
+        p.full === photoFull
+          ? { ...p, zoom: Math.max(0.5, Math.min((p.zoom || 1) + delta, 3)) }
+          : p
+      )
+    );
+  };
 
   return (
     <div>
@@ -74,32 +92,69 @@ function Album({ path, setPath }) {
         </>
       )}
 
-      {data?.length > 0 && (
-        <>
-          <h2 style={{ padding: "0 16px" }}>Photos</h2>
-          <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", padding: 16 }}>
-            {data.map((p) => (
-              <a
-                key={API + p.full}
-                href={API + p.full}
-                target="_blank"
-                rel="noreferrer"
-                style={{ border: "1px solid #ddd", borderRadius: 16, overflow: "hidden", textDecoration: "none", color: "inherit" }}
-              >
-                <img
-                  src={API + p.thumb}
-                  alt={p.name}
-                  loading="lazy"
-                  style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
-                />
-                <div style={{ padding: 8, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {p.name}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 24, padding: 16 }}>
+        <div style={{ flex: 1 }}>
+          {data?.length > 0 && (
+            <>
+              <h2 style={{ padding: "0 0 8px 0" }}>Photos</h2>
+              <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))" }}>
+                {data.map((p) => (
+                  <div
+                    key={API + p.full}
+                    onClick={() => handlePhotoClick(p)}
+                    style={{
+                      border: selectedPhotos.some((sp) => sp.full === p.full) ? "2px solid #0078d4" : "1px solid #ddd",
+                      borderRadius: 16,
+                      overflow: "hidden",
+                      cursor: "pointer",
+                      background: selectedPhotos.some((sp) => sp.full === p.full) ? "#e6f7ff" : "#fff",
+                    }}
+                  >
+                    <img
+                      src={API + p.thumb}
+                      alt={p.name}
+                      loading="lazy"
+                      style={{ width: "100%", height: 100, objectFit: "cover", display: "block" }}
+                    />
+                    <div style={{ padding: 8, fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {p.name}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {selectedPhotos.length > 0 && (
+          <div style={{ flex: 2, minWidth: 0 }}>
+            <h2 style={{ marginBottom: 8 }}>Selected Photos</h2>
+            <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              {selectedPhotos.map((p) => (
+                <div key={p.full} style={{ position: "relative", background: "#fff", borderRadius: 16, boxShadow: "0 2px 8px #0001", padding: 8 }}>
+                  <img
+                    src={API + p.full}
+                    alt={p.name}
+                    style={{
+                      width: 320 * (p.zoom || 1),
+                      height: 240 * (p.zoom || 1),
+                      objectFit: "contain",
+                      borderRadius: 12,
+                      transition: "transform 0.2s",
+                    }}
+                  />
+                  <div style={{ display: "flex", justifyContent: "center", gap: 8, marginTop: 8 }}>
+                    <button onClick={() => handleZoom(p.full, 0.2)} style={{ padding: "4px 8px", borderRadius: 8 }}>Zoom In</button>
+                    <button onClick={() => handleZoom(p.full, -0.2)} style={{ padding: "4px 8px", borderRadius: 8 }}>Zoom Out</button>
+                    <button onClick={() => handlePhotoClick(p)} style={{ padding: "4px 8px", borderRadius: 8 }}>Close</button>
+                  </div>
+                  <div style={{ textAlign: "center", fontSize: 13, marginTop: 4 }}>{p.name}</div>
                 </div>
-              </a>
-            ))}
+              ))}
+            </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
 
       {(!data.folders || data.folders.length === 0) && (!data.photos || data.photos.length === 0) && (
         <div style={{ padding: 16 }}>No items here.</div>
