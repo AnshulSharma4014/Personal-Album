@@ -87,7 +87,7 @@ function Album({ path, setPath }) {
                 style={{ border: "1px solid #ddd", borderRadius: 16, overflow: "hidden", textDecoration: "none", color: "inherit" }}
               >
                 <img
-                  src={p.thumb}
+                  src={API + p.thumb}
                   alt={p.name}
                   loading="lazy"
                   style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }}
