@@ -37,7 +37,7 @@ function Toolbar({ path, onBack }) {
 }
 
 function Album({ path, setPath }) {
-  const url = path ? `/api/albums${path}` : "/api/albums";
+  const url = path ? `${API}/api/albums${path}` : `${API}/api/albums`;
   console.log("Album URL:", url);
   const { data, loading, err } = useFetchJSON(url);
 
@@ -106,7 +106,7 @@ function Album({ path, setPath }) {
 }
 
 export default function App() {
-  const [path, setPath] = useState(API);
+  const [path, setPath] = useState("");
 
   return (
     <div style={{ minHeight: "100vh", background: "#fafafa" }}>
