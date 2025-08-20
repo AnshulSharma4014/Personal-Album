@@ -323,7 +323,7 @@ function Album({ path, setPath, token }) {
                 video={item.data}
                 isActive={isActive}
                 onClick={() => {
-                  if (isMobile) window.open(item.data.watchUrl, "_blank", "noopener,noreferrer");
+                  if (isMobile) window.open(item.data.fullUrl, "_blank", "noopener,noreferrer");
                   else setSelected(item.data);
                 }}
               />
