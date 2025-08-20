@@ -12,7 +12,23 @@ function absUrl(u) {
   return `${base}${path}`;
 }
 
-function useFetchJSON(url) {
+// Add ?token=... to media/watch URLs so <img>/<video> and /watch authorize
+function withToken(u, token) {
+  if (!token) return u;
+  try {
+    const url = new URL(u, API || window.location.origin);
+    const p = url.pathname;
+    if (p.startsWith("/api/photo/") || p.startsWith("/api/thumb/") || p.startsWith("/api/vthumb/") || p.startsWith("/api/video/") || p.startsWith("/watch/")) {
+      url.searchParams.set("token", token);
+    }
+    return url.toString();
+  } catch {
+    const needs = u.startsWith("/api/") || u.startsWith("/watch/");
+    return needs ? `${u}${u.includes("?") ? "&" : "?"}token=${encodeURIComponent(token)}` : u;
+  }
+}
+
+function useFetchJSON(url, token) {
   const [data, setData] = useState(null);
   const [err, setErr] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -20,7 +36,11 @@ function useFetchJSON(url) {
   useEffect(() => {
     let alive = true;
     setLoading(true);
-    fetch(url)
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    fetch(url, {
+      headers,
+      credentials: "include", // allows cookie fallback if you’re same-origin
+    })
       .then((r) => {
         if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
         return r.json();
@@ -29,7 +49,7 @@ function useFetchJSON(url) {
       .catch((e) => alive && setErr(e))
       .finally(() => alive && setLoading(false));
     return () => { alive = false; };
-  }, [url]);
+  }, [url, token]);
 
   return { data, err, loading };
 }
@@ -71,7 +91,6 @@ function Toolbar({ path, onBack }) {
   );
 }
 
-/* Folder icon + button */
 function FolderIcon({ size = 20, color = "#888" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 20 20" fill="none">
@@ -80,21 +99,16 @@ function FolderIcon({ size = 20, color = "#888" }) {
     </svg>
   );
 }
+
 function FolderButton({ folder, onClick }) {
   return (
     <button
       key={folder.path}
       onClick={() => onClick(folder.path)}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        textAlign: "left",
-        border: "1px solid #000",
-        borderRadius: 12,
-        padding: 10,
-        background: "#fafafa",
-        cursor: "pointer",
+        display: "flex", alignItems: "center", gap: 10,
+        textAlign: "left", border: "1px solid #000", borderRadius: 12, padding: 10,
+        background: "#fafafa", cursor: "pointer",
       }}
     >
       <FolderIcon />
@@ -107,7 +121,6 @@ function FolderButton({ folder, onClick }) {
   );
 }
 
-/* Photo tile */
 function PhotoButton({ photo, isActive, onClick }) {
   return (
     <button
@@ -115,12 +128,8 @@ function PhotoButton({ photo, isActive, onClick }) {
       onClick={onClick}
       style={{
         border: isActive ? "2px solid #4b8bfd" : "1px solid #ddd",
-        borderRadius: 16,
-        padding: 0,
-        overflow: "hidden",
-        cursor: "pointer",
-        background: "#fff",
-        minHeight: 140,
+        borderRadius: 16, padding: 0, overflow: "hidden",
+        cursor: "pointer", background: "#fff", minHeight: 140,
       }}
       title={photo.name}
     >
@@ -135,7 +144,6 @@ function PhotoButton({ photo, isActive, onClick }) {
   );
 }
 
-/* Video tile (thumb + play overlay; falls back to icon if no thumb) */
 function VideoButton({ video, isActive, onClick }) {
   return (
     <button
@@ -143,13 +151,8 @@ function VideoButton({ video, isActive, onClick }) {
       onClick={onClick}
       style={{
         border: isActive ? "2px solid #4b8bfd" : "1px solid #ddd",
-        borderRadius: 16,
-        padding: 0,
-        overflow: "hidden",
-        cursor: "pointer",
-        background: "#fff",
-        minHeight: 140,
-        position: "relative",
+        borderRadius: 16, padding: 0, overflow: "hidden",
+        cursor: "pointer", background: "#fff", minHeight: 140, position: "relative",
       }}
       title={video.name}
     >
@@ -180,13 +183,12 @@ function VideoButton({ video, isActive, onClick }) {
 }
 
 /* ---------- main ---------- */
-function Album({ path, setPath }) {
+function Album({ path, setPath, token }) {
   const isMobile = useIsMobile(900);
 
   const url = path ? `${API}/api/albums${path}` : `${API}/api/albums`;
-  const { data, loading, err } = useFetchJSON(url);
+  const { data, loading, err } = useFetchJSON(url, token);
 
-  // normalize
   const folders = useMemo(() => (Array.isArray(data) ? [] : data?.folders ?? []), [data]);
 
   const photos = useMemo(() => {
@@ -194,33 +196,36 @@ function Album({ path, setPath }) {
     return raw.map((p) => ({
       type: "photo",
       name: p.name || p.fileName || "",
-      thumbUrl: absUrl(p.thumb || p.thumbnail || p.url || p.full),
-      fullUrl: absUrl(p.full || p.url || p.src || p.thumb),
+      thumbUrl: withToken(absUrl(p.thumb || p.thumbnail || p.url || p.full), token),
+      fullUrl: withToken(absUrl(p.full || p.url || p.src || p.thumb), token),
       key: (p.full || p.thumb || p.url || p.name || Math.random().toString(36)),
     }));
-  }, [data]);
+  }, [data, token]);
 
   const videos = useMemo(() => {
     const raw = Array.isArray(data) ? [] : (data?.videos ?? []);
-    return raw.map((v) => ({
-      type: "video",
-      name: v.name || v.fileName || "",
-      thumbUrl: absUrl(v.thumb || v.poster || v.thumbnail || ""),
-      fullUrl: absUrl(v.full || v.url || v.src || ""),
-      mime: v.mime || "",
-      key: (v.full || v.url || v.name || Math.random().toString(36)),
-    }));
-  }, [data]);
+    return raw.map((v) => {
+      const full = withToken(absUrl(v.full || v.url || v.src || ""), token);
+      const watch = withToken(full.replace("/api/video/", "/watch/"), token);
+      return {
+        type: "video",
+        name: v.name || v.fileName || "",
+        thumbUrl: withToken(absUrl(v.thumb || v.poster || v.thumbnail || ""), token),
+        fullUrl: full,
+        watchUrl: watch,
+        key: (v.full || v.url || v.name || Math.random().toString(36)),
+      };
+    });
+  }, [data, token]);
 
-  // selection
-  const [selected, setSelected] = useState(null); // {type:'photo'|'video', ...}
+  // selection + zoom (desktop)
+  const [selected, setSelected] = useState(null); // {type, ...}
   useEffect(() => {
     if (photos.length) setSelected(photos[0]);
     else if (videos.length) setSelected(videos[0]);
     else setSelected(null);
   }, [url, photos, videos]);
 
-  // zoom for photos
   const [zoom, setZoom] = useState(1);
   const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
   const zoomIn = () => setZoom((z) => clamp(z + 0.25, 0.25, 4));
@@ -233,35 +238,20 @@ function Album({ path, setPath }) {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(1);
   useEffect(() => {
-    // whenever we switch selection, reset media states
     setZoom(1);
     setIsPlaying(false);
     setMuted(false);
     setVolume(1);
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-    }
+    if (videoRef.current) { videoRef.current.pause(); videoRef.current.currentTime = 0; }
   }, [selected?.key]);
 
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) { v.play(); setIsPlaying(true); }
-    else { v.pause(); setIsPlaying(false); }
+    if (v.paused) { v.play(); setIsPlaying(true); } else { v.pause(); setIsPlaying(false); }
   };
-  const toggleMute = () => {
-    const v = videoRef.current;
-    if (!v) return;
-    v.muted = !v.muted;
-    setMuted(v.muted);
-  };
-  const changeVol = (val) => {
-    const v = videoRef.current;
-    const x = Math.min(Math.max(val, 0), 1);
-    setVolume(x);
-    if (v) v.volume = x;
-  };
+  const toggleMute = () => { if (!videoRef.current) return; videoRef.current.muted = !videoRef.current.muted; setMuted(videoRef.current.muted); };
+  const changeVol = (x) => { const v = Math.min(Math.max(x, 0), 1); setVolume(v); if (videoRef.current) videoRef.current.volume = v; };
 
   if (loading) return <div style={{ padding: 16 }}>Loading…</div>;
   if (err || !data) return <div style={{ padding: 16 }}>Error loading.</div>;
@@ -269,7 +259,6 @@ function Album({ path, setPath }) {
   const canBack = path && path !== "/";
   const back = canBack ? (path.split("/").slice(0, -1).join("/") || "/") : null;
 
-  // combined grid
   const items = [
     ...folders.map((f) => ({ type: "folder", data: f })),
     ...photos.map((p) => ({ type: "photo", data: p })),
@@ -327,7 +316,6 @@ function Album({ path, setPath }) {
                 />
               );
             }
-            // video
             const isActive = !isMobile && selected && selected.key === item.data.key;
             return (
               <VideoButton
@@ -335,7 +323,7 @@ function Album({ path, setPath }) {
                 video={item.data}
                 isActive={isActive}
                 onClick={() => {
-                  if (isMobile) window.open(item.data.fullUrl, "_blank", "noopener,noreferrer");
+                  if (isMobile) window.open(item.data.watchUrl, "_blank", "noopener,noreferrer");
                   else setSelected(item.data);
                 }}
               />
@@ -360,12 +348,7 @@ function Album({ path, setPath }) {
               <button onClick={toggleMute} style={ctlBtn}>{muted ? "Unmute" : "Mute"}</button>
               <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#fff" }}>
                 <span style={{ fontSize: 12 }}>Vol</span>
-                <input
-                  type="range"
-                  min="0" max="1" step="0.05"
-                  value={volume}
-                  onChange={(e) => changeVol(parseFloat(e.target.value))}
-                />
+                <input type="range" min="0" max="1" step="0.05" value={volume} onChange={(e) => changeVol(parseFloat(e.target.value))} />
               </div>
             </div>
           ) : null}
@@ -437,27 +420,30 @@ const ctlBtn = {
 };
 
 export default function App() {
-  const [loggedIn, setLoggedIn] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(() => !!localStorage.getItem("pa_token"));
+  const [token, setToken] = useState(() => localStorage.getItem("pa_token") || "");
   const [path, setPath] = useState(""); // "" = top-level
 
   async function handleLogin(username, password) {
-   try {
-     const res = await fetch(`${import.meta.env.VITE_API ?? ""}/api/login`, {
-       method: "POST",
-       headers: { "Content-Type": "application/json" },
-       // credentials not needed in same-origin dev/prod; add 'include' if you deploy cross-origin
-       body: JSON.stringify({ username, password }),
-     });
-     if (!res.ok) throw new Error("Invalid credentials");
-     setLoggedIn(true);
-   } catch (e) {
-     throw e;
-   }
- }
+    const base = API || "";
+    const res = await fetch(`${base}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include", // ok to keep; cookie if same-origin
+      body: JSON.stringify({ username, password }),
+    });
+    if (!res.ok) throw new Error("Invalid credentials");
+    const j = await res.json();
+    if (j?.token) {
+      setToken(j.token);
+      localStorage.setItem("pa_token", j.token);
+    }
+    setLoggedIn(true);
+  }
 
- if (!loggedIn) {
-   return <LoginPage onLogin={handleLogin} />;
- }
+  if (!loggedIn) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
 
-  return <Album path={path} setPath={setPath} />;
+  return <Album path={path} setPath={setPath} token={token} />;
 }
